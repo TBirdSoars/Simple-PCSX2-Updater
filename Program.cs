@@ -1,4 +1,8 @@
-﻿using System;
+﻿using HtmlAgilityPack;
+using SharpCompress.Archives.SevenZip;
+using SharpCompress.Common;
+using SharpCompress.Readers;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -6,27 +10,18 @@ using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
-using HtmlAgilityPack;
 
 namespace Simple_PCSX2_Updater
 {
     class Program
     {
         static readonly String baseURL = @"https://buildbot.orphis.net";
-        static readonly String ext = @"/pcsx2/index.php";
-        static private String downloadURL = "";
+        static readonly String urlParam = @"/pcsx2/index.php";
+        static readonly String zipFile = @"pcsx2.7z";
         static private String currentDir = "";
         static private String pcsx2EXE = "";
-        static private ConsoleKey response = ConsoleKey.N;
-        static private HtmlWeb web = new HtmlWeb();
-        static private HtmlDocument htmlDoc;
-        static private HtmlNode tableNode;
-        static private List<List<HtmlNode>> tableListList;
-        static private DataTable releaseTable = new DataTable();
-        static private DataTable buildTable = new DataTable();
-        static private DataTable finalTable = new DataTable();
 
-        static async Task Main(string[] args)
+        static async Task Main()
         {
             // Begin
             Console.WriteLine("Simple PCSX2 Updater - By TBirdSoars");
@@ -34,6 +29,7 @@ namespace Simple_PCSX2_Updater
 
             // Identify where this app is and check for pcsx2.exe
             Console.WriteLine("Finding PCSX2... ");
+            ConsoleKey response = ConsoleKey.N;
             try
             {
                 currentDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
@@ -51,6 +47,7 @@ namespace Simple_PCSX2_Updater
                 }
                 else
                 {
+                    response = ConsoleKey.Y;
                     Console.WriteLine("PCSX2 Found!");
                 }
             }
@@ -63,27 +60,34 @@ namespace Simple_PCSX2_Updater
             // Proceed?
             if (response == ConsoleKey.Y)
             {
-                // Download
+                // Download webpage
                 Console.WriteLine("Downloading PCSX2... ");
+                HtmlDocument htmlDoc = new HtmlDocument();
+                HtmlWeb htmlWeb = new HtmlWeb();
                 try
                 {
-                    htmlDoc = web.Load(baseURL + ext);
+                    htmlDoc = await htmlWeb.LoadFromWebAsync(baseURL + urlParam);
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine(ex.Message);
                 }
+
+                //
+                // TODO - Account for nulls if requests fail
+                //
                 // Get table with all recent releases
-                tableNode = htmlDoc.DocumentNode.SelectSingleNode("//table[@class='listing']");
+                HtmlNode tableNode = htmlDoc.DocumentNode.SelectSingleNode("//table[@class='listing']");
                 // OK - get items of table, skip first item of table, only get items that contain more than one element, get the table as a list of lists of htmlnodes?!
-                tableListList = tableNode.Descendants("tr").Skip(1).Where(tr => tr.Elements("td").Count() > 1).Select(tr => tr.Elements("td").ToList()).ToList();
+                List<List<HtmlNode>> tableListList = tableNode.Descendants("tr").Skip(1).Where(tr => tr.Elements("td").Count() > 1).Select(tr => tr.Elements("td").ToList()).ToList();
 
                 // Convert list of lists to datatable
-                releaseTable.Columns.Add("commit",typeof(String));
-                releaseTable.Columns.Add("username",typeof(String));
-                releaseTable.Columns.Add("date",typeof(String));
-                releaseTable.Columns.Add("build",typeof(String));
-                releaseTable.Columns.Add("change",typeof(String));
+                DataTable releaseTable = new DataTable();
+                releaseTable.Columns.Add("commit", typeof(String));
+                releaseTable.Columns.Add("username", typeof(String));
+                releaseTable.Columns.Add("date", typeof(String));
+                releaseTable.Columns.Add("build", typeof(String));
+                releaseTable.Columns.Add("change", typeof(String));
                 foreach (List<HtmlNode> nodeList in tableListList)
                 {
                     DataRow row = releaseTable.NewRow();
@@ -95,7 +99,7 @@ namespace Simple_PCSX2_Updater
                         if (nodeList[i].HasChildNodes)
                         {
                             // Get attribute from childnode
-                            if(nodeList[i].FirstChild.Attributes["href"] != null)
+                            if (nodeList[i].FirstChild.Attributes["href"] != null)
                             {
                                 row[i] = nodeList[i].FirstChild.Attributes["href"].Value;
                             }
@@ -115,10 +119,10 @@ namespace Simple_PCSX2_Updater
                 }
 
                 // Remove "No build" entries
-                buildTable = releaseTable.Select("build <> 'No build'").CopyToDataTable();
+                DataTable buildTable = releaseTable.Select("build <> 'No build'").CopyToDataTable();
 
                 // Convert the date column to datetime, then sort to find newest
-                finalTable = buildTable.Clone();
+                DataTable finalTable = buildTable.Clone();
                 finalTable.Columns["date"].DataType = typeof(DateTime);
                 foreach (DataRow row in buildTable.Rows)
                 {
@@ -132,12 +136,13 @@ namespace Simple_PCSX2_Updater
                 {
                     try
                     {
-                        downloadURL = baseURL + finalTable.Rows[0]["build"].ToString().Replace("amp;", "");
+                        String downloadURL = baseURL + finalTable.Rows[0]["build"].ToString().Replace("amp;", "");
                         HttpResponseMessage httpResponseMessage = await client.GetAsync(downloadURL);
 
                         using (Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync())
                         {
-                            FileInfo fileInfo = new FileInfo("pcsx2.7z");
+                            FileInfo fileInfo = new FileInfo(Path.Combine(currentDir, zipFile));
+
                             using (FileStream fileStream = fileInfo.OpenWrite())
                             {
                                 await stream.CopyToAsync(fileStream);
@@ -152,14 +157,28 @@ namespace Simple_PCSX2_Updater
 
                 // Extract 7zip archive
                 Console.WriteLine("Extracting PCSX2... ");
+                String downloadPath = Path.Combine(currentDir, zipFile);
 
+                if (File.Exists(downloadPath))
+                {
+                    SevenZipArchive sevenZipArchive = SevenZipArchive.Open(downloadPath);
+                    IReader reader = sevenZipArchive.ExtractAllEntries();
+                    while (reader.MoveToNextEntry())
+                    {
+                        ExtractionOptions extractionOptions = new ExtractionOptions();
+                        extractionOptions.ExtractFullPath = true;
+                        extractionOptions.Overwrite = true;
 
-                // Overwrite 7zip with download
-                Console.WriteLine("Overwriting existing PCSX2... ");
+                        reader.WriteEntryToDirectory(currentDir, extractionOptions);
+                    }
 
-
-                // Done!
-                Console.WriteLine("Done!");
+                    // Done!
+                    Console.WriteLine("Done!");
+                }
+                else
+                {
+                    Console.WriteLine($"Download file '{zipFile}' not found in current directory.");
+                }
             }
 
             Console.WriteLine("```");
@@ -167,6 +186,21 @@ namespace Simple_PCSX2_Updater
             // End execution
             Console.WriteLine("Press any key to continue...");
             Console.ReadKey();
+        }
+
+        private void GetBuildTable()
+        {
+
+        }
+
+        private void DownloadArchive()
+        {
+
+        }
+
+        private void ExtractArchive()
+        {
+
         }
     }
 }
