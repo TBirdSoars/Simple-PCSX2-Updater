@@ -13,15 +13,15 @@ using System.Threading.Tasks;
 
 namespace Simple_PCSX2_Updater
 {
-    class Program
+    internal class Program
     {
-        static readonly String baseURL = @"https://buildbot.orphis.net";
-        static readonly String urlParam = @"/pcsx2/index.php";
-        static readonly String zipFile = @"pcsx2.7z";
-        static private String currentDir = "";
-        static private String pcsx2EXE = "";
+        private static readonly string baseURL = @"https://buildbot.orphis.net";
+        private static readonly string urlParam = @"/pcsx2/index.php";
+        private static readonly string zipFile = @"pcsx2.7z";
+        private static string currentDir = "";
+        private static string pcsx2EXE = "";
 
-        static async Task Main()
+        private static async Task Main()
         {
             // Begin
             Console.WriteLine("Simple PCSX2 Updater - By TBirdSoars");
@@ -83,11 +83,11 @@ namespace Simple_PCSX2_Updater
 
                 // Convert list of lists to datatable
                 DataTable releaseTable = new DataTable();
-                releaseTable.Columns.Add("commit", typeof(String));
-                releaseTable.Columns.Add("username", typeof(String));
-                releaseTable.Columns.Add("date", typeof(String));
-                releaseTable.Columns.Add("build", typeof(String));
-                releaseTable.Columns.Add("change", typeof(String));
+                releaseTable.Columns.Add("commit", typeof(string));
+                releaseTable.Columns.Add("username", typeof(string));
+                releaseTable.Columns.Add("date", typeof(string));
+                releaseTable.Columns.Add("build", typeof(string));
+                releaseTable.Columns.Add("change", typeof(string));
                 foreach (List<HtmlNode> nodeList in tableListList)
                 {
                     DataRow row = releaseTable.NewRow();
@@ -136,7 +136,7 @@ namespace Simple_PCSX2_Updater
                 {
                     try
                     {
-                        String downloadURL = baseURL + finalTable.Rows[0]["build"].ToString().Replace("amp;", "");
+                        string downloadURL = baseURL + finalTable.Rows[0]["build"].ToString().Replace("amp;", "");
                         HttpResponseMessage httpResponseMessage = await client.GetAsync(downloadURL);
 
                         using (Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync())
@@ -157,7 +157,7 @@ namespace Simple_PCSX2_Updater
 
                 // Extract 7zip archive
                 Console.WriteLine("Extracting PCSX2... ");
-                String downloadPath = Path.Combine(currentDir, zipFile);
+                string downloadPath = Path.Combine(currentDir, zipFile);
 
                 if (File.Exists(downloadPath))
                 {
@@ -165,9 +165,11 @@ namespace Simple_PCSX2_Updater
                     IReader reader = sevenZipArchive.ExtractAllEntries();
                     while (reader.MoveToNextEntry())
                     {
-                        ExtractionOptions extractionOptions = new ExtractionOptions();
-                        extractionOptions.ExtractFullPath = true;
-                        extractionOptions.Overwrite = true;
+                        ExtractionOptions extractionOptions = new ExtractionOptions
+                        {
+                            ExtractFullPath = true,
+                            Overwrite = true
+                        };
 
                         reader.WriteEntryToDirectory(currentDir, extractionOptions);
                     }
