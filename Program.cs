@@ -32,7 +32,8 @@ namespace Simple_PCSX2_Updater
             ConsoleKey response = ConsoleKey.N;
             try
             {
-                currentDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                //currentDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                currentDir = Path.GetDirectoryName(AppContext.BaseDirectory);
                 pcsx2EXE = Path.Combine(currentDir, "pcsx2.exe");
                 if (!File.Exists(pcsx2EXE))
                 {
