@@ -8,14 +8,15 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Reflection;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace Simple_PCSX2_Updater
 {
     internal class Program
     {
-        private static readonly string baseURL = @"https://buildbot.orphis.net";
+        private static readonly HttpClient client = new HttpClient();
+        private static readonly Uri baseURL = new Uri(@"https://buildbot.orphis.net");
         private static readonly string urlParam = @"/pcsx2/index.php";
         private static readonly string zipFile = @"pcsx2.7z";
         private static string currentDir = "";
@@ -132,28 +133,30 @@ namespace Simple_PCSX2_Updater
                 finalTable.DefaultView.Sort = "date DESC";
                 finalTable = finalTable.DefaultView.ToTable();
 
+                string folderName = "";
                 // Get download from URL, from finalTable
-                using (HttpClient client = new HttpClient())
+                try
                 {
-                    try
+                    Uri downloadURL = new Uri(baseURL + finalTable.Rows[0]["build"].ToString().Replace("amp;", ""));
+
+                    using (HttpResponseMessage httpResponseMessage = await client.GetAsync(downloadURL))
+                    using (Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync())
                     {
-                        string downloadURL = baseURL + finalTable.Rows[0]["build"].ToString().Replace("amp;", "");
-                        HttpResponseMessage httpResponseMessage = await client.GetAsync(downloadURL);
+                        FileInfo fileInfo = new FileInfo(Path.Combine(currentDir, zipFile));
 
-                        using (Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync())
+                        using (FileStream fileStream = fileInfo.OpenWrite())
                         {
-                            FileInfo fileInfo = new FileInfo(Path.Combine(currentDir, zipFile));
-
-                            using (FileStream fileStream = fileInfo.OpenWrite())
-                            {
-                                await stream.CopyToAsync(fileStream);
-                            }
+                            stream.CopyTo(fileStream);
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex.Message);
-                    }
+
+                    // Get name of extract folder
+                    folderName = "pcsx2-" + HttpUtility.ParseQueryString(downloadURL.Query).Get("rev");
+                    folderName += "-" + HttpUtility.ParseQueryString(downloadURL.Query).Get("platform");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
                 }
 
                 // Extract 7zip archive
@@ -162,27 +165,48 @@ namespace Simple_PCSX2_Updater
 
                 if (File.Exists(downloadPath))
                 {
-                    SevenZipArchive sevenZipArchive = SevenZipArchive.Open(downloadPath);
-                    IReader reader = sevenZipArchive.ExtractAllEntries();
-                    while (reader.MoveToNextEntry())
+                    using (SevenZipArchive sevenZipArchive = SevenZipArchive.Open(downloadPath))
+                    using (IReader reader = sevenZipArchive.ExtractAllEntries())
                     {
-                        ExtractionOptions extractionOptions = new ExtractionOptions
+                        while (reader.MoveToNextEntry())
                         {
-                            ExtractFullPath = true,
-                            Overwrite = true
-                        };
+                            ExtractionOptions extractionOptions = new ExtractionOptions
+                            {
+                                ExtractFullPath = true,
+                                Overwrite = true
+                            };
 
-                        reader.WriteEntryToDirectory(currentDir, extractionOptions);
+                            reader.WriteEntryToDirectory(currentDir, extractionOptions);
+                        }
                     }
 
-                    // Done!
-                    Console.WriteLine("Done!");
+                    // Now, using name of folder from URI query, move its
+                    // contents to location of pcsx2.exe, overwriting everything
+
                 }
                 else
                 {
                     Console.WriteLine($"Download file '{zipFile}' not found in current directory.");
                 }
+
+                Console.WriteLine($"Cleaning up...");
+                // Delete 7z file
+                if (File.Exists(downloadPath))
+                {
+                    File.Delete(downloadPath);
+                }
+
+                // Delete extract folder
+                if (Directory.Exists(Path.Combine(currentDir, folderName)))
+                {
+                    Directory.Delete(Path.Combine(currentDir, folderName), true);
+                }
+                Directory.
+                // Done!
+                Console.WriteLine("Done!");
             }
+
+
 
             Console.WriteLine("```");
 
