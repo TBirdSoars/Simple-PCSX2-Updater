@@ -201,7 +201,7 @@ namespace Simple_PCSX2_Updater
                 {
                     Directory.Delete(Path.Combine(currentDir, folderName), true);
                 }
-                Directory.
+
                 // Done!
                 Console.WriteLine("Done!");
             }
