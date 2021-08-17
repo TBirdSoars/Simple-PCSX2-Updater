@@ -182,15 +182,14 @@ namespace Simple_PCSX2_Updater
                             reader.WriteEntryToDirectory(currentDir, extractionOptions);
                         }
                     }
-
-                    // Now, using name of folder from URI query, move its
-                    // contents to location of pcsx2.exe, overwriting everything
-
                 }
                 else
                 {
                     Console.WriteLine($"Download file '{zipFile}' not found in current directory.");
                 }
+
+                // Move files into pcsx2.exe directory
+                MoveEverything(folderPath, currentDir);
 
                 Console.WriteLine($"Cleaning up...");
                 // Delete 7z file
@@ -229,6 +228,45 @@ namespace Simple_PCSX2_Updater
         }
 
         private void ExtractArchive()
+        {
+
+        }
+
+        private static void MoveEverything(string src, string dest)
+        {
+            //
+            // https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/file-system/how-to-copy-delete-and-move-files-and-folders
+            //
+            if (Directory.Exists(src) && Directory.Exists(dest))
+            {
+                string[] files = Directory.GetFiles(src);
+                string[] folders = Directory.GetDirectories(src);
+
+                // Copy the files and overwrite destination files if they already exist.
+                foreach (string file in files)
+                {
+                    // Use static Path methods to extract only the file name from the path.
+                    string fileName = Path.GetFileName(file);
+                    string destFile = Path.Combine(dest, fileName);
+                    File.Move(file, destFile, true);
+                }
+
+                // Copy the folders and overwrite destination files if they already exist.
+                foreach (string folder in folders)
+                {
+                    // Use static Path methods to extract only the file name from the path.
+                    string folderName = Path.GetFileName(folder);
+                    string destFolder = Path.Combine(dest, folderName);
+                    Directory.Move(folder, destFolder);
+                }
+            }
+            else
+            {
+                Console.WriteLine("Source path does not exist!");
+            }
+        }
+
+        private void Cleanup()
         {
 
         }
