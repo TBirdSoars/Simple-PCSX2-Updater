@@ -132,12 +132,13 @@ namespace Simple_PCSX2_Updater
                 }
                 finalTable.DefaultView.Sort = "date DESC";
                 finalTable = finalTable.DefaultView.ToTable();
+                string build_Path_and_Query = finalTable.Rows[0]["build"].ToString().Replace("amp;", "");
 
                 string folderName = "";
                 // Get download from URL, from finalTable
                 try
                 {
-                    Uri downloadURL = new Uri(baseURL + finalTable.Rows[0]["build"].ToString().Replace("amp;", ""));
+                    Uri downloadURL = new Uri(baseURL + build_Path_and_Query);
 
                     using (HttpResponseMessage httpResponseMessage = await client.GetAsync(downloadURL))
                     using (Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync())
