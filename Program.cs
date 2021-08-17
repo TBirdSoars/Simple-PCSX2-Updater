@@ -189,7 +189,7 @@ namespace Simple_PCSX2_Updater
                 }
 
                 // Move files into pcsx2.exe directory
-                MoveEverything(folderPath, currentDir);
+                Move(folderPath, currentDir);
 
                 Console.WriteLine($"Cleaning up...");
                 // Delete 7z file
@@ -232,7 +232,7 @@ namespace Simple_PCSX2_Updater
 
         }
 
-        private static void MoveEverything(string src, string dest)
+        private static void Move(string src, string dest)
         {
             //
             // https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/file-system/how-to-copy-delete-and-move-files-and-folders
