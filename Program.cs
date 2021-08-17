@@ -20,7 +20,8 @@ namespace Simple_PCSX2_Updater
         private static readonly string urlParam = @"/pcsx2/index.php";
         private static readonly string zipFile = @"pcsx2.7z";
         private static string currentDir = "";
-        private static string pcsx2EXE = "";
+        private static string pcsx2FullDir = "";
+        private static string zipFullDir = "";
 
         private static async Task Main()
         {
@@ -35,8 +36,8 @@ namespace Simple_PCSX2_Updater
             {
                 //currentDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
                 currentDir = Path.GetDirectoryName(AppContext.BaseDirectory);
-                pcsx2EXE = Path.Combine(currentDir, "pcsx2.exe");
-                if (!File.Exists(pcsx2EXE))
+                pcsx2FullDir = Path.Combine(currentDir, "pcsx2.exe");
+                if (!File.Exists(pcsx2FullDir))
                 {
                     // Wrong folder or first time downloading
                     do
@@ -58,6 +59,9 @@ namespace Simple_PCSX2_Updater
                 Console.WriteLine(ex.Message);
                 response = ConsoleKey.N;
             }
+
+            // Set full path of zip file
+            zipFullDir = Path.Combine(currentDir, zipFile);
 
             // Proceed?
             if (response == ConsoleKey.Y)
@@ -132,53 +136,36 @@ namespace Simple_PCSX2_Updater
                 }
                 finalTable.DefaultView.Sort = "date DESC";
                 finalTable = finalTable.DefaultView.ToTable();
+
                 string build_Path_and_Query = finalTable.Rows[0]["build"].ToString().Replace("amp;", "");
+                Uri downloadURL = new Uri(baseURL + build_Path_and_Query);
 
-                string folderName = "";
+
                 // Get download from URL, from finalTable
-                try
-                {
-                    Uri downloadURL = new Uri(baseURL + build_Path_and_Query);
+                await DownloadArchive(downloadURL, zipFullDir);
 
-                    using (HttpResponseMessage httpResponseMessage = await client.GetAsync(downloadURL))
-                    using (Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync())
-                    {
-                        FileInfo fileInfo = new FileInfo(Path.Combine(currentDir, zipFile));
 
-                        using (FileStream fileStream = fileInfo.OpenWrite())
-                        {
-                            stream.CopyTo(fileStream);
-                        }
-                    }
-
-                    // Get name of extract folder
-                    folderName = "pcsx2-" + HttpUtility.ParseQueryString(downloadURL.Query).Get("rev");
-                    folderName += "-" + HttpUtility.ParseQueryString(downloadURL.Query).Get("platform");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
-
-                string folderPath = Path.Combine(currentDir, folderName);
+                // Get name of extract folder
+                string folderName = "pcsx2-" + HttpUtility.ParseQueryString(downloadURL.Query).Get("rev");
+                folderName += "-" + HttpUtility.ParseQueryString(downloadURL.Query).Get("platform");
+                string extractFolder = Path.Combine(currentDir, folderName);
 
                 // Extract 7zip archive
                 Console.WriteLine("Extracting PCSX2... ");
-                string downloadPath = Path.Combine(currentDir, zipFile);
-                ExtractArchive(downloadPath);
+                ExtractArchive(zipFullDir);
 
 
                 // Move files into pcsx2.exe directory
                 Console.WriteLine("Moving files...");
-                MoveAll(folderPath, currentDir);
+                MoveAll(extractFolder, currentDir);
 
 
                 // Cleanup
                 Console.WriteLine($"Cleaning up...");
                 // Delete 7z file
-                Cleanup(downloadPath);
+                Cleanup(zipFullDir);
                 // Delete extract folder
-                Cleanup(folderPath);
+                Cleanup(extractFolder);
 
 
                 // Done!
@@ -186,46 +173,71 @@ namespace Simple_PCSX2_Updater
             }
 
 
-
             Console.WriteLine("```");
+
 
             // End execution
             Console.WriteLine("Press any key to continue...");
             Console.ReadKey();
         }
 
-        private void GetBuildTable()
+        private static DataTable GetBuildTable()
         {
+            DataTable output = new DataTable();
 
+            return output;
         }
 
-        private void DownloadArchive()
+        private async static Task DownloadArchive(Uri uri, string dest)
         {
+            try
+            {
+                using (HttpResponseMessage httpResponseMessage = await client.GetAsync(uri))
+                using (Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync())
+                {
+                    FileInfo fileInfo = new FileInfo(dest);
 
+                    using (FileStream fileStream = fileInfo.OpenWrite())
+                    {
+                        stream.CopyTo(fileStream);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
 
         private static void ExtractArchive(string src)
         {
-            if (File.Exists(src))
+            try
             {
-                using (SevenZipArchive sevenZipArchive = SevenZipArchive.Open(src))
-                using (IReader reader = sevenZipArchive.ExtractAllEntries())
+                if (File.Exists(src))
                 {
-                    while (reader.MoveToNextEntry())
+                    using (SevenZipArchive sevenZipArchive = SevenZipArchive.Open(src))
+                    using (IReader reader = sevenZipArchive.ExtractAllEntries())
                     {
-                        ExtractionOptions extractionOptions = new ExtractionOptions
+                        while (reader.MoveToNextEntry())
                         {
-                            ExtractFullPath = true,
-                            Overwrite = true
-                        };
+                            ExtractionOptions extractionOptions = new ExtractionOptions
+                            {
+                                ExtractFullPath = true,
+                                Overwrite = true
+                            };
 
-                        reader.WriteEntryToDirectory(currentDir, extractionOptions);
+                            reader.WriteEntryToDirectory(currentDir, extractionOptions);
+                        }
                     }
                 }
+                else
+                {
+                    Console.WriteLine($"Download file '{zipFile}' not found in current directory.");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Console.WriteLine($"Download file '{zipFile}' not found in current directory.");
+                Console.WriteLine(ex.Message);
             }
         }
 
@@ -250,10 +262,10 @@ namespace Simple_PCSX2_Updater
                         File.Move(file, destFile, true);
                     }
 
-                    // Copy the folders and overwrite destination files if they already exist.
+                    // Copy the folders
                     foreach (string folder in folders)
                     {
-                        // Use static Path methods to extract only the file name from the path.
+                        // Use static Path methods to extract only the folder name from the path.
                         string folderName = Path.GetFileName(folder);
                         string destFolder = Path.Combine(dest, folderName);
                         Directory.Move(folder, destFolder);
@@ -277,6 +289,10 @@ namespace Simple_PCSX2_Updater
                 if (File.Exists(src))
                 {
                     File.Delete(src);
+                }
+                else if (Directory.Exists(src))
+                {
+                    Directory.Delete(src);
                 }
                 else
                 {
