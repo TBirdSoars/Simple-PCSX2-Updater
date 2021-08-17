@@ -165,44 +165,21 @@ namespace Simple_PCSX2_Updater
                 // Extract 7zip archive
                 Console.WriteLine("Extracting PCSX2... ");
                 string downloadPath = Path.Combine(currentDir, zipFile);
+                ExtractArchive(downloadPath);
 
-                if (File.Exists(downloadPath))
-                {
-                    using (SevenZipArchive sevenZipArchive = SevenZipArchive.Open(downloadPath))
-                    using (IReader reader = sevenZipArchive.ExtractAllEntries())
-                    {
-                        while (reader.MoveToNextEntry())
-                        {
-                            ExtractionOptions extractionOptions = new ExtractionOptions
-                            {
-                                ExtractFullPath = true,
-                                Overwrite = true
-                            };
-
-                            reader.WriteEntryToDirectory(currentDir, extractionOptions);
-                        }
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"Download file '{zipFile}' not found in current directory.");
-                }
 
                 // Move files into pcsx2.exe directory
-                Move(folderPath, currentDir);
+                Console.WriteLine("Moving files...");
+                MoveAll(folderPath, currentDir);
 
+
+                // Cleanup
                 Console.WriteLine($"Cleaning up...");
                 // Delete 7z file
-                if (File.Exists(downloadPath))
-                {
-                    File.Delete(downloadPath);
-                }
-
+                Cleanup(downloadPath);
                 // Delete extract folder
-                if (Directory.Exists(folderPath))
-                {
-                    Directory.Delete(folderPath, true);
-                }
+                Cleanup(folderPath);
+
 
                 // Done!
                 Console.WriteLine("Done!");
@@ -227,48 +204,89 @@ namespace Simple_PCSX2_Updater
 
         }
 
-        private void ExtractArchive()
+        private static void ExtractArchive(string src)
         {
-
-        }
-
-        private static void Move(string src, string dest)
-        {
-            //
-            // https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/file-system/how-to-copy-delete-and-move-files-and-folders
-            //
-            if (Directory.Exists(src) && Directory.Exists(dest))
+            if (File.Exists(src))
             {
-                string[] files = Directory.GetFiles(src);
-                string[] folders = Directory.GetDirectories(src);
-
-                // Copy the files and overwrite destination files if they already exist.
-                foreach (string file in files)
+                using (SevenZipArchive sevenZipArchive = SevenZipArchive.Open(src))
+                using (IReader reader = sevenZipArchive.ExtractAllEntries())
                 {
-                    // Use static Path methods to extract only the file name from the path.
-                    string fileName = Path.GetFileName(file);
-                    string destFile = Path.Combine(dest, fileName);
-                    File.Move(file, destFile, true);
-                }
+                    while (reader.MoveToNextEntry())
+                    {
+                        ExtractionOptions extractionOptions = new ExtractionOptions
+                        {
+                            ExtractFullPath = true,
+                            Overwrite = true
+                        };
 
-                // Copy the folders and overwrite destination files if they already exist.
-                foreach (string folder in folders)
-                {
-                    // Use static Path methods to extract only the file name from the path.
-                    string folderName = Path.GetFileName(folder);
-                    string destFolder = Path.Combine(dest, folderName);
-                    Directory.Move(folder, destFolder);
+                        reader.WriteEntryToDirectory(currentDir, extractionOptions);
+                    }
                 }
             }
             else
             {
-                Console.WriteLine("Source path does not exist!");
+                Console.WriteLine($"Download file '{zipFile}' not found in current directory.");
             }
         }
 
-        private void Cleanup()
+        private static void MoveAll(string src, string dest)
         {
+            //
+            // https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/file-system/how-to-copy-delete-and-move-files-and-folders
+            //
+            try
+            {
+                if (Directory.Exists(src) && Directory.Exists(dest))
+                {
+                    string[] files = Directory.GetFiles(src);
+                    string[] folders = Directory.GetDirectories(src);
 
+                    // Copy the files and overwrite destination files if they already exist.
+                    foreach (string file in files)
+                    {
+                        // Use static Path methods to extract only the file name from the path.
+                        string fileName = Path.GetFileName(file);
+                        string destFile = Path.Combine(dest, fileName);
+                        File.Move(file, destFile, true);
+                    }
+
+                    // Copy the folders and overwrite destination files if they already exist.
+                    foreach (string folder in folders)
+                    {
+                        // Use static Path methods to extract only the file name from the path.
+                        string folderName = Path.GetFileName(folder);
+                        string destFolder = Path.Combine(dest, folderName);
+                        Directory.Move(folder, destFolder);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"{src} and {dest} do not exist!");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
+        private static void Cleanup(string src)
+        {
+            try
+            {
+                if (File.Exists(src))
+                {
+                    File.Delete(src);
+                }
+                else
+                {
+                    Console.WriteLine($"{src} does not exist!");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
     }
 }
