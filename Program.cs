@@ -34,7 +34,6 @@ namespace Simple_PCSX2_Updater
             ConsoleKey response = ConsoleKey.N;
             try
             {
-                //currentDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
                 currentDir = Path.GetDirectoryName(AppContext.BaseDirectory);
                 pcsx2FullDir = Path.Combine(currentDir, "pcsx2.exe");
                 if (!File.Exists(pcsx2FullDir))
@@ -98,11 +97,8 @@ namespace Simple_PCSX2_Updater
                 Console.WriteLine("Done!");
             }
 
-
-            Console.WriteLine("```");
-
-
             // End execution
+            Console.WriteLine("```");
             Console.WriteLine("Press any key to continue...");
             Console.ReadKey();
         }
@@ -124,9 +120,6 @@ namespace Simple_PCSX2_Updater
                 Console.WriteLine(ex.Message);
             }
 
-            //
-            // TODO - Account for nulls if requests fail
-            //
             // Get table with all recent releases
             HtmlNode tableNode = htmlDoc.DocumentNode.SelectSingleNode("//table[@class='listing']");
             // OK - get items of table, skip first item of table, only get items that contain more than one element, get the table as a list of lists of htmlnodes?!
