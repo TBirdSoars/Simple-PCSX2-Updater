@@ -94,14 +94,6 @@ namespace Simple_PCSX2_Updater
                 MoveAll(extractFolder, currentDir);
 
 
-                // Cleanup
-                Console.WriteLine($"Cleaning up...");
-                // Delete 7z file
-                Cleanup(zipFullDir);
-                // Delete extract folder
-                Cleanup(extractFolder);
-
-
                 // Done!
                 Console.WriteLine("Done!");
             }
@@ -233,6 +225,9 @@ namespace Simple_PCSX2_Updater
                             reader.WriteEntryToDirectory(currentDir, extractionOptions);
                         }
                     }
+
+                    // Cleanup
+                    File.Delete(src);
                 }
                 else
                 {
@@ -247,9 +242,6 @@ namespace Simple_PCSX2_Updater
 
         private static void MoveAll(string src, string dest)
         {
-            //
-            // https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/file-system/how-to-copy-delete-and-move-files-and-folders
-            //
             try
             {
                 if (Directory.Exists(src) && Directory.Exists(dest))
@@ -257,50 +249,58 @@ namespace Simple_PCSX2_Updater
                     string[] files = Directory.GetFiles(src);
                     string[] folders = Directory.GetDirectories(src);
 
-                    // Copy the files and overwrite destination files if they already exist.
+                    // Move the files and overwrite destination files if they already exist.
                     foreach (string file in files)
                     {
+                        string oldFile = Path.Combine(dest, Path.GetFileName(file));
+
+                        // Delete all files with same name
+                        if (File.Exists(oldFile))
+                        {
+                            File.Delete(oldFile);
+                        }
+
                         // Use static Path methods to extract only the file name from the path.
                         string fileName = Path.GetFileName(file);
                         string destFile = Path.Combine(dest, fileName);
                         File.Move(file, destFile, true);
                     }
 
-                    // Copy the folders
+                    // Move the folders
                     foreach (string folder in folders)
                     {
+                        string oldFolder = Path.Combine(dest, Path.GetFileName(folder));
+
+                        // Delete all folders with same name, starting with contents
+                        if (Directory.Exists(oldFolder))
+                        {
+                            // Delete contents of old folder
+                            DirectoryInfo di = new DirectoryInfo(oldFolder);
+                            foreach (FileInfo file in di.GetFiles())
+                            {
+                                file.Delete();
+                            }
+                            foreach (DirectoryInfo dir in di.GetDirectories())
+                            {
+                                dir.Delete(true);
+                            }
+
+                            // Delete old folder
+                            Directory.Delete(oldFolder);
+                        }
+
                         // Use static Path methods to extract only the folder name from the path.
                         string folderName = Path.GetFileName(folder);
                         string destFolder = Path.Combine(dest, folderName);
                         Directory.Move(folder, destFolder);
                     }
-                }
-                else
-                {
-                    Console.WriteLine($"{src} and {dest} do not exist!");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
-        }
 
-        private static void Cleanup(string src)
-        {
-            try
-            {
-                if (File.Exists(src))
-                {
-                    File.Delete(src);
-                }
-                else if (Directory.Exists(src))
-                {
+                    // Delete src folder
                     Directory.Delete(src);
                 }
                 else
                 {
-                    Console.WriteLine($"{src} does not exist!");
+                    Console.WriteLine($"{src} and {dest} do not exist!");
                 }
             }
             catch (Exception ex)
