@@ -160,6 +160,8 @@ namespace Simple_PCSX2_Updater
                     Console.WriteLine(ex.Message);
                 }
 
+                string folderPath = Path.Combine(currentDir, folderName);
+
                 // Extract 7zip archive
                 Console.WriteLine("Extracting PCSX2... ");
                 string downloadPath = Path.Combine(currentDir, zipFile);
@@ -198,9 +200,9 @@ namespace Simple_PCSX2_Updater
                 }
 
                 // Delete extract folder
-                if (Directory.Exists(Path.Combine(currentDir, folderName)))
+                if (Directory.Exists(folderPath))
                 {
-                    Directory.Delete(Path.Combine(currentDir, folderName), true);
+                    Directory.Delete(folderPath, true);
                 }
 
                 // Done!
