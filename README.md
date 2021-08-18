@@ -2,6 +2,8 @@
 Simple updater for the dev build of PCSX2 on Windows.
 
 # Warning
+This is for the development build on Windows ONLY. DO NOT use this with the stable build!
+
 Using this updater will overwrite your current installation of PCSX2, which may result in important files being replaced. 
 
 Configurations, saves, games, etc. may be lost upon updating. Use at your own risk.
