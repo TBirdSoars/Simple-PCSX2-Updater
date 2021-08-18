@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web;
@@ -64,7 +65,7 @@ namespace Simple_PCSX2_Updater
             // Proceed?
             if (response == ConsoleKey.Y)
             {
-                if(Directory.Exists(currentDir))
+                if (Directory.Exists(currentDir))
                 {
                     // Get build list
                     Console.WriteLine("Getting build list... ");
@@ -136,10 +137,10 @@ namespace Simple_PCSX2_Updater
 
             // Get table with all recent releases
             HtmlNode tableNode = htmlDoc.DocumentNode.SelectSingleNode("//table[@class='listing']");
-            // OK - get items of table, skip first item of table, only get items that contain more than one element, get the table as a list of lists of htmlnodes?!
             // First make sure stuff exists
-            if(tableNode != null)
+            if (tableNode != null)
             {
+                // OK - get items of table, skip first item of table, only get items that contain more than one element, get the table as a list of lists of htmlnodes?!
                 List<List<HtmlNode>> tableListList = tableNode.Descendants("tr").Skip(1).Where(tr => tr.Elements("td").Count() > 1).Select(tr => tr.Elements("td").ToList()).ToList();
 
                 // Convert list of lists to datatable
@@ -199,18 +200,33 @@ namespace Simple_PCSX2_Updater
             return output;
         }
 
+        // Downloads file from Uri as file specified in destination path
         private static async Task DownloadArchive(Uri uri, string dest)
         {
             try
             {
                 using (HttpResponseMessage httpResponseMessage = await client.GetAsync(uri))
-                using (Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync())
                 {
-                    FileInfo fileInfo = new FileInfo(dest);
-
-                    using (FileStream fileStream = fileInfo.OpenWrite())
+                    if (httpResponseMessage.StatusCode != HttpStatusCode.OK)
                     {
-                        stream.CopyTo(fileStream);
+                        Console.WriteLine("Downlaod Error: Did not receive 200 OK status code.");
+                        return;
+                    }
+
+                    if (httpResponseMessage.Content == null)
+                    {
+                        Console.WriteLine("Downlaod Error: Response message content was null.");
+                        return;
+                    }
+
+                    using (Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync())
+                    {
+                        FileInfo fileInfo = new FileInfo(dest);
+
+                        using (FileStream fileStream = fileInfo.OpenWrite())
+                        {
+                            stream.CopyTo(fileStream);
+                        }
                     }
                 }
             }
@@ -220,6 +236,7 @@ namespace Simple_PCSX2_Updater
             }
         }
 
+        // Extracts 7z archive, then deletes archive
         private static void ExtractArchive(string src)
         {
             try
@@ -255,6 +272,8 @@ namespace Simple_PCSX2_Updater
             }
         }
 
+        // Moves everything from within source folder to destination folder,
+        // then deletes source folder
         private static void MoveAll(string src, string dest)
         {
             try
