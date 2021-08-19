@@ -75,7 +75,7 @@ namespace Simple_PCSX2_Updater
                     {
                         // Get download URL
                         string build_Path_and_Query = buildTable.Rows[0]["build"].ToString().Replace("amp;", "");
-                        Uri downloadURL = new Uri(baseURL + build_Path_and_Query);
+                        Uri downloadURL = new Uri(baseURL, build_Path_and_Query);
 
 
                         // Get name of extract folder
@@ -222,7 +222,7 @@ namespace Simple_PCSX2_Updater
                     using (Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync())
                     {
                         FileInfo fileInfo = new FileInfo(dest);
-
+                        
                         using (FileStream fileStream = fileInfo.OpenWrite())
                         {
                             stream.CopyTo(fileStream);
