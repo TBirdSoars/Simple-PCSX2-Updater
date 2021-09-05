@@ -65,52 +65,46 @@ namespace Simple_PCSX2_Updater
             // Proceed?
             if (response == ConsoleKey.Y)
             {
-                if (Directory.Exists(currentDir))
+                // Get build list
+                Console.WriteLine("Getting build list... ");
+                DataTable buildTable = await GetBuildTable();
+                if (buildTable.Rows.Count == 0)
                 {
-                    // Get build list
-                    Console.WriteLine("Getting build list... ");
-                    DataTable buildTable = await GetBuildTable();
-
-                    if (buildTable.Rows.Count > 0)
-                    {
-                        // Get download URL
-                        string build_Path_and_Query = buildTable.Rows[0]["build"].ToString().Replace("amp;", "");
-                        Uri downloadURL = new Uri(baseURL, build_Path_and_Query);
-
-
-                        // Get name of extract folder
-                        string folderName = "pcsx2-" + HttpUtility.ParseQueryString(downloadURL.Query).Get("rev");
-                        folderName += "-" + HttpUtility.ParseQueryString(downloadURL.Query).Get("platform");
-                        string extractFolder = Path.Combine(currentDir, folderName);
-
-
-                        // Get download from URL, from finalTable
-                        Console.WriteLine($"Downloading version {folderName}... ");
-                        await DownloadArchive(downloadURL, zipFullDir);
-
-
-                        // Extract 7zip archive
-                        Console.WriteLine("Extracting PCSX2... ");
-                        ExtractArchive(zipFullDir);
-
-
-                        // Move files into pcsx2.exe directory
-                        Console.WriteLine("Moving files...");
-                        MoveAll(extractFolder, currentDir);
-
-
-                        // Done!
-                        Console.WriteLine("Done!");
-                    }
-                    else
-                    {
-                        Console.WriteLine("Failed to get list of builds, exiting...");
-                    }
+                    Console.WriteLine("Failed to get list of builds, exiting...");
+                    Console.WriteLine("Press any key to continue...");
+                    Console.ReadKey();
+                    return;
                 }
-                else
-                {
-                    Console.WriteLine($"{currentDir} does not exist, exiting...");
-                }
+
+
+                // Get download URL
+                string build_Path_and_Query = buildTable.Rows[0]["build"].ToString().Replace("amp;", "");
+                Uri downloadURL = new Uri(baseURL, build_Path_and_Query);
+
+
+                // Get name of extract folder
+                string folderName = "pcsx2-" + HttpUtility.ParseQueryString(downloadURL.Query).Get("rev");
+                folderName += "-" + HttpUtility.ParseQueryString(downloadURL.Query).Get("platform");
+                string extractFolder = Path.Combine(currentDir, folderName);
+
+
+                // Get download from URL, from finalTable
+                Console.WriteLine($"Downloading version {folderName}... ");
+                await DownloadArchive(downloadURL, zipFullDir);
+
+
+                // Extract 7zip archive
+                Console.WriteLine("Extracting PCSX2... ");
+                ExtractArchive(zipFullDir);
+
+
+                // Move files into pcsx2.exe directory
+                Console.WriteLine("Moving files...");
+                MoveAll(extractFolder, currentDir);
+
+
+                // Done!
+                Console.WriteLine("Done!");
             }
 
             // End execution
@@ -222,7 +216,7 @@ namespace Simple_PCSX2_Updater
                     using (Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync())
                     {
                         FileInfo fileInfo = new FileInfo(dest);
-                        
+
                         using (FileStream fileStream = fileInfo.OpenWrite())
                         {
                             stream.CopyTo(fileStream);
