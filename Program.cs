@@ -97,7 +97,7 @@ namespace Simple_PCSX2_Updater
                 string extractFolder = Path.Combine(currentDir, folderName);
 
 
-                // Get download from URL, from finalTable
+                // Get download from URL
                 Console.WriteLine($"Downloading version {folderName}... ");
                 await DownloadArchive(downloadURL, zipFullDir);
 
