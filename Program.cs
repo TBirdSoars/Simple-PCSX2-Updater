@@ -68,7 +68,7 @@ namespace Simple_PCSX2_Updater
                 // Get build list
                 Console.WriteLine("Getting build list... ");
                 DataTable buildTable = await GetBuildTable();
-                if (buildTable.Rows.Count == 0)
+                if (buildTable.Rows.Count == 0 || !buildTable.Columns.Contains("build"))
                 {
                     Console.WriteLine("Failed to get list of builds, exiting...");
                     Console.WriteLine("Press any key to continue...");
@@ -78,8 +78,17 @@ namespace Simple_PCSX2_Updater
 
 
                 // Get download URL
+                Console.WriteLine("Building download url... ");
                 string build_Path_and_Query = buildTable.Rows[0]["build"].ToString().Replace("amp;", "");
                 Uri downloadURL = new Uri(baseURL, build_Path_and_Query);
+                if (HttpUtility.ParseQueryString(downloadURL.Query).Get("rev") == null
+                    || HttpUtility.ParseQueryString(downloadURL.Query).Get("platform") == null)
+                {
+                    Console.WriteLine("Failed to get download URL data, exiting...");
+                    Console.WriteLine("Press any key to continue...");
+                    Console.ReadKey();
+                    return;
+                }
 
 
                 // Get name of extract folder
