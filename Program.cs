@@ -212,13 +212,13 @@ namespace Simple_PCSX2_Updater
                 {
                     if (message.StatusCode != HttpStatusCode.OK)
                     {
-                        Console.WriteLine("Downlaod Error: Did not receive 200 OK status code.");
+                        Console.WriteLine("DownloadArchive Error: Did not receive 200 OK status code.");
                         return;
                     }
 
                     if (message.Content == null)
                     {
-                        Console.WriteLine("Downlaod Error: Response message content was null.");
+                        Console.WriteLine("DownloadArchive Error: Response message content was null.");
                         return;
                     }
 
