@@ -208,21 +208,21 @@ namespace Simple_PCSX2_Updater
         {
             try
             {
-                using (HttpResponseMessage httpResponseMessage = await client.GetAsync(uri))
+                using (HttpResponseMessage message = await client.GetAsync(uri))
                 {
-                    if (httpResponseMessage.StatusCode != HttpStatusCode.OK)
+                    if (message.StatusCode != HttpStatusCode.OK)
                     {
                         Console.WriteLine("Downlaod Error: Did not receive 200 OK status code.");
                         return;
                     }
 
-                    if (httpResponseMessage.Content == null)
+                    if (message.Content == null)
                     {
                         Console.WriteLine("Downlaod Error: Response message content was null.");
                         return;
                     }
 
-                    using (Stream stream = await httpResponseMessage.Content.ReadAsStreamAsync())
+                    using (Stream stream = await message.Content.ReadAsStreamAsync())
                     {
                         FileInfo fileInfo = new FileInfo(dest);
 
@@ -277,6 +277,7 @@ namespace Simple_PCSX2_Updater
 
         // Moves everything from within source folder to destination folder,
         // then deletes source folder
+        // https://stackoverflow.com/questions/48248807/move-certain-files-to-a-folder-in-the-fastest-way-possible
         private static void MoveAll(string src, string dest)
         {
             try
@@ -286,18 +287,18 @@ namespace Simple_PCSX2_Updater
                     string[] files = Directory.GetFiles(src);
                     string[] folders = Directory.GetDirectories(src);
 
-                    // Move the files and overwrite destination files if they already exist.
+                    // Move the files
                     foreach (string file in files)
                     {
                         string oldFile = Path.Combine(dest, Path.GetFileName(file));
 
-                        // Delete all files with same name
+                        // Delete existing files with same name
                         if (File.Exists(oldFile))
                         {
                             File.Delete(oldFile);
                         }
 
-                        // Use static Path methods to extract only the file name from the path.
+                        // Move new files to destination
                         string fileName = Path.GetFileName(file);
                         string destFile = Path.Combine(dest, fileName);
                         File.Move(file, destFile, true);
@@ -308,10 +309,10 @@ namespace Simple_PCSX2_Updater
                     {
                         string oldFolder = Path.Combine(dest, Path.GetFileName(folder));
 
-                        // Delete all folders with same name, starting with contents
+                        // Delete existing folders with same name
                         if (Directory.Exists(oldFolder))
                         {
-                            // Delete contents of old folder
+                            // Must delete folder contents first
                             DirectoryInfo di = new DirectoryInfo(oldFolder);
                             foreach (FileInfo file in di.GetFiles())
                             {
@@ -326,7 +327,7 @@ namespace Simple_PCSX2_Updater
                             Directory.Delete(oldFolder);
                         }
 
-                        // Use static Path methods to extract only the folder name from the path.
+                        // Move new folders to destination
                         string folderName = Path.GetFileName(folder);
                         string destFolder = Path.Combine(dest, folderName);
                         Directory.Move(folder, destFolder);
@@ -337,7 +338,7 @@ namespace Simple_PCSX2_Updater
                 }
                 else
                 {
-                    Console.WriteLine($"{src} and {dest} do not exist!");
+                    Console.WriteLine($"{src} or {dest} does not exist!");
                 }
             }
             catch (Exception ex)
