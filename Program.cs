@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web;
@@ -210,7 +209,7 @@ namespace Simple_PCSX2_Updater
             {
                 using (HttpResponseMessage message = await client.GetAsync(uri))
                 {
-                    if (message.StatusCode != HttpStatusCode.OK)
+                    if (!message.IsSuccessStatusCode)
                     {
                         Console.WriteLine("DownloadArchive Error: Did not receive 200 OK status code.");
                         return;
@@ -223,13 +222,9 @@ namespace Simple_PCSX2_Updater
                     }
 
                     using (Stream stream = await message.Content.ReadAsStreamAsync())
+                    using (FileStream fileStream = new FileInfo(dest).OpenWrite())
                     {
-                        FileInfo fileInfo = new FileInfo(dest);
-
-                        using (FileStream fileStream = fileInfo.OpenWrite())
-                        {
-                            stream.CopyTo(fileStream);
-                        }
+                        stream.CopyTo(fileStream);
                     }
                 }
             }
@@ -251,13 +246,7 @@ namespace Simple_PCSX2_Updater
                     {
                         while (reader.MoveToNextEntry())
                         {
-                            ExtractionOptions extractionOptions = new ExtractionOptions
-                            {
-                                ExtractFullPath = true,
-                                Overwrite = true
-                            };
-
-                            reader.WriteEntryToDirectory(currentDir, extractionOptions);
+                            reader.WriteEntryToDirectory(currentDir, new ExtractionOptions{ExtractFullPath = true, Overwrite = true});
                         }
                     }
 
