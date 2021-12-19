@@ -43,7 +43,7 @@ namespace Simple_PCSX2_Updater
                     {
                         Console.Write("pcsx2.exe not found in the current folder. Do you want to download PCSX2 to this folder anyway? (y/n) ");
                         response = Console.ReadKey(false).Key;
-                        Console.WriteLine("");
+                        Console.WriteLine();
                     }
                     while (response != ConsoleKey.Y && response != ConsoleKey.N);
                 }
@@ -55,14 +55,14 @@ namespace Simple_PCSX2_Updater
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine("Exception Finding PCSX2: " + ex.Message);
             }
 
             // Set full path of zip file
             zipFullDir = Path.Combine(currentDir, zipFile);
 
             // Proceed?
-            if (response == ConsoleKey.Y)
+            //if (response == ConsoleKey.Y)
             {
                 // Get build list
                 Console.WriteLine("Getting build list... ");
@@ -134,7 +134,7 @@ namespace Simple_PCSX2_Updater
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine("GetBuildTable Exception: " + ex.Message);
             }
 
             // Get table with all recent releases
@@ -230,7 +230,7 @@ namespace Simple_PCSX2_Updater
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine("DownloadArchive Exception: " + ex.Message);
             }
         }
 
@@ -257,7 +257,7 @@ namespace Simple_PCSX2_Updater
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine("ExtractArchive Exception: " + ex.Message);
             }
         }
 
@@ -324,12 +324,12 @@ namespace Simple_PCSX2_Updater
                 }
                 else
                 {
-                    Console.WriteLine($"{src} or {dest} does not exist!");
+                    Console.WriteLine($"MoveAll Error: {src} or {dest} does not exist!");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Console.WriteLine("MoveAll Exception: " + ex.Message);
             }
         }
     }
