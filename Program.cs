@@ -19,12 +19,13 @@ namespace Simple_PCSX2_Updater
         private static readonly Uri baseURL = new Uri(@"https://buildbot.orphis.net");
         private static readonly string urlParam = @"/pcsx2/index.php";
         private static readonly string zipFile = @"pcsx2.7z";
-        private static string currentDir = "";
-        private static string pcsx2FullDir = "";
-        private static string zipFullDir = "";
 
         private static async Task Main()
         {
+            string currentDir = string.Empty;
+            string pcsx2FullDir = string.Empty;
+            string zipFullDir = string.Empty;
+
             // Begin
             Console.WriteLine("Simple PCSX2 Updater - By TBirdSoars");
             Console.WriteLine("```");
@@ -55,7 +56,7 @@ namespace Simple_PCSX2_Updater
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Exception Finding PCSX2: " + ex.Message);
+                Console.WriteLine($"Exception Finding PCSX2: {ex.Message}");
             }
 
             // Set full path of zip file
@@ -80,10 +81,10 @@ namespace Simple_PCSX2_Updater
                 Console.WriteLine("Building download url... ");
                 string build_Path_and_Query = buildTable.Rows[0]["build"].ToString().Replace("amp;", "");
                 Uri downloadURL = new Uri(baseURL, build_Path_and_Query);
-                if (HttpUtility.ParseQueryString(downloadURL.Query).Get("rev") == null
-                    || HttpUtility.ParseQueryString(downloadURL.Query).Get("platform") == null)
+                if (HttpUtility.ParseQueryString(downloadURL.Query).Get("rev") == null ||
+                    HttpUtility.ParseQueryString(downloadURL.Query).Get("platform") == null)
                 {
-                    Console.WriteLine("Failed to get download URL data, exiting...");
+                    Console.WriteLine("Failed to get download URL, exiting...");
                     Console.WriteLine("Press any key to continue...");
                     Console.ReadKey();
                     return;
@@ -99,11 +100,25 @@ namespace Simple_PCSX2_Updater
                 // Get download from URL
                 Console.WriteLine($"Downloading version {folderName}... ");
                 await DownloadArchive(downloadURL, zipFullDir);
+                if (!File.Exists(zipFullDir))
+                {
+                    Console.WriteLine("Failed to download, exiting...");
+                    Console.WriteLine("Press any key to continue...");
+                    Console.ReadKey();
+                    return;
+                }
 
 
                 // Extract 7zip archive
                 Console.WriteLine("Extracting PCSX2... ");
-                ExtractArchive(zipFullDir);
+                ExtractArchive(zipFullDir, currentDir);
+                if (!Directory.Exists(extractFolder))
+                {
+                    Console.WriteLine("Failed to extract archive, exiting...");
+                    Console.WriteLine("Press any key to continue...");
+                    Console.ReadKey();
+                    return;
+                }
 
 
                 // Move files into pcsx2.exe directory
@@ -134,7 +149,7 @@ namespace Simple_PCSX2_Updater
             }
             catch (Exception ex)
             {
-                Console.WriteLine("GetBuildTable Exception: " + ex.Message);
+                Console.WriteLine($"GetBuildTable Exception: {ex.Message}");
             }
 
             // Get table with all recent releases
@@ -196,7 +211,7 @@ namespace Simple_PCSX2_Updater
             }
             else
             {
-                Console.WriteLine($"{baseURL} returned null");
+                Console.WriteLine($"GetBuildTable Error: '{baseURL}' returned null.");
             }
 
             return output;
@@ -230,12 +245,12 @@ namespace Simple_PCSX2_Updater
             }
             catch (Exception ex)
             {
-                Console.WriteLine("DownloadArchive Exception: " + ex.Message);
+                Console.WriteLine($"DownloadArchive Exception: {ex.Message}");
             }
         }
 
         // Extracts 7z archive, then deletes archive
-        private static void ExtractArchive(string src)
+        private static void ExtractArchive(string src, string dest)
         {
             try
             {
@@ -244,7 +259,7 @@ namespace Simple_PCSX2_Updater
                     using (SevenZipArchive sevenZipArchive = SevenZipArchive.Open(src))
                     using (IReader reader = sevenZipArchive.ExtractAllEntries())
                     {
-                        reader.WriteAllToDirectory(currentDir, new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
+                        reader.WriteAllToDirectory(dest, new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
                     }
 
                     // Cleanup
@@ -252,12 +267,12 @@ namespace Simple_PCSX2_Updater
                 }
                 else
                 {
-                    Console.WriteLine($"Download file '{zipFile}' not found in current directory.");
+                    Console.WriteLine($"ExtractArchive Error: Download file '{src}' not found in current directory.");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("ExtractArchive Exception: " + ex.Message);
+                Console.WriteLine($"ExtractArchive Exception: {ex.Message}");
             }
         }
 
@@ -324,12 +339,12 @@ namespace Simple_PCSX2_Updater
                 }
                 else
                 {
-                    Console.WriteLine($"MoveAll Error: {src} or {dest} does not exist!");
+                    Console.WriteLine($"MoveAll Error: '{src}' or '{dest}' does not exist.");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("MoveAll Exception: " + ex.Message);
+                Console.WriteLine($"MoveAll Exception: {ex.Message}");
             }
         }
     }
