@@ -254,7 +254,7 @@ namespace Simple_PCSX2_Updater
         {
             try
             {
-                if (File.Exists(src))
+                if (File.Exists(src) && Directory.Exists(dest))
                 {
                     using (SevenZipArchive sevenZipArchive = SevenZipArchive.Open(src))
                     using (IReader reader = sevenZipArchive.ExtractAllEntries())
@@ -267,7 +267,7 @@ namespace Simple_PCSX2_Updater
                 }
                 else
                 {
-                    Console.WriteLine($"ExtractArchive Error: Download file '{src}' not found in current directory.");
+                    Console.WriteLine($"ExtractArchive Error: '{src}' or '{dest}' does not exist.");
                 }
             }
             catch (Exception ex)
