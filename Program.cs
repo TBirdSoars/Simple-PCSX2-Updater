@@ -62,7 +62,7 @@ namespace Simple_PCSX2_Updater
             zipFullDir = Path.Combine(currentDir, zipFile);
 
             // Proceed?
-            //if (response == ConsoleKey.Y)
+            if (response == ConsoleKey.Y)
             {
                 // Get build list
                 Console.WriteLine("Getting build list... ");
