@@ -8,6 +8,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Web;
 
@@ -15,6 +16,8 @@ namespace Simple_PCSX2_Updater
 {
     internal class Program
     {
+        private bool isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        private bool isLinux = RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
         private static readonly HttpClient client = new HttpClient();
         private static readonly Uri baseURL = new Uri(@"https://buildbot.orphis.net");
         private static readonly string urlParam = @"/pcsx2/index.php";
