@@ -218,6 +218,10 @@ namespace Simple_PCSX2_Updater
         }
 
         // Downloads file from Uri as file specified in destination path
+        //
+        // 2/18/22 URI NOW REDIRECTS TO DETAILS PAGE - NO LONGER WORKS
+        // TRY TO GET "Download"
+        //
         private static async Task DownloadArchive(Uri uri, string dest)
         {
             try
