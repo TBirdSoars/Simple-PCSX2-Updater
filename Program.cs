@@ -144,18 +144,18 @@ namespace Simple_PCSX2_Updater
                 {
                     if (!response.IsSuccessStatusCode)
                     {
-                        Console.WriteLine("DownloadArchive Error: Did not receive 200 OK status code.");
+                        Console.WriteLine("GetNightlyVersion Error: Did not receive 200 OK status code.");
                         return version;
                     }
 
                     if (response.Content == null)
                     {
-                        Console.WriteLine("DownloadArchive Error: Response message content was null.");
+                        Console.WriteLine("GetNightlyVersion Error: Response message content was null.");
                         return version;
                     }
 
                     // Parse the JSON object
-                    using (Stream stream = await response.Content.ReadAsStreamAsync())
+                    using (Stream stream = response.Content.ReadAsStream())
                     using (StreamReader sReader = new StreamReader(stream))
                     using (JsonTextReader jReader = new JsonTextReader(sReader))
                     {
@@ -220,7 +220,7 @@ namespace Simple_PCSX2_Updater
                         return;
                     }
 
-                    using (Stream stream = await message.Content.ReadAsStreamAsync())
+                    using (Stream stream = message.Content.ReadAsStream())
                     using (FileStream fileStream = new FileInfo(destFile).OpenWrite())
                     {
                         stream.CopyTo(fileStream);
@@ -236,8 +236,6 @@ namespace Simple_PCSX2_Updater
         // Extracts 7z archive, then deletes archive
         private static void ExtractHere(string src)
         {
-            string a = Path.GetDirectoryName(src);
-
             try
             {
                 if (File.Exists(src))
