@@ -237,7 +237,6 @@ namespace Simple_PCSX2_Updater
                     using (SevenZipArchive sevenZipArchive = SevenZipArchive.Open(src))
                     using (IReader reader = sevenZipArchive.ExtractAllEntries())
                     {
-                        //reader.WriteAllToDirectory(dest, new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
                         reader.WriteAllToDirectory(Path.GetDirectoryName(src), new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
                     }
 
