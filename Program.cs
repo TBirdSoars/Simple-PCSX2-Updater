@@ -35,9 +35,17 @@ namespace Simple_PCSX2_Updater
             Console.WriteLine("Finding PCSX2... ");
             try
             {
+                bool pcsx2Found = false;
                 currentDir = Path.GetDirectoryName(AppContext.BaseDirectory);
-                pcsx2FullDir = Path.Combine(currentDir, "pcsx2.exe");
-                if (!File.Exists(pcsx2FullDir))
+                foreach (string dir in Directory.GetFiles(currentDir))
+                {
+                    string file = Path.GetFileName(dir);
+                    if (file.StartsWith("pcsx2") && file.EndsWith(".exe"))
+                    {
+                        pcsx2Found = true;
+                    }
+                }
+                if (!pcsx2Found)
                 {
                     // Wrong folder or first time downloading
                     do
@@ -111,7 +119,7 @@ namespace Simple_PCSX2_Updater
 
                 // Extract 7zip archive
                 Console.WriteLine("Extracting PCSX2... ");
-                ExtractArchive(zipFullDir);
+                ExtractHere(zipFullDir);
 
 
                 // Done!
@@ -226,7 +234,7 @@ namespace Simple_PCSX2_Updater
         }
 
         // Extracts 7z archive, then deletes archive
-        private static void ExtractArchive(string src)
+        private static void ExtractHere(string src)
         {
             string a = Path.GetDirectoryName(src);
 
