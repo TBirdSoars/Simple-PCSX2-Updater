@@ -1,5 +1,5 @@
 # Simple-PCSX2-Updater
-Simple updater for the dev build of PCSX2 on Windows.
+Simple updater for the dev build of PCSX2 on Windows. It downloads the latest nightly AVX2 build.
 
 # Warning
 This is for the development build on Windows **ONLY**. **DO NOT** use this with the stable build!
