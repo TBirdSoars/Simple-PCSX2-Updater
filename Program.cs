@@ -1,30 +1,31 @@
-﻿using HtmlAgilityPack;
+﻿using Newtonsoft.Json;
 using SharpCompress.Archives.SevenZip;
 using SharpCompress.Common;
 using SharpCompress.Readers;
 using System;
-using System.Collections.Generic;
-using System.Data;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
-using System.Web;
 
 namespace Simple_PCSX2_Updater
 {
     internal class Program
     {
         private static readonly HttpClient client = new HttpClient();
-        private static readonly Uri baseURL = new Uri(@"https://buildbot.orphis.net");
-        private static readonly string urlParam = @"/pcsx2/index.php";
-        private static readonly string zipFile = @"pcsx2.7z";
 
         private static async Task Main()
         {
+            Uri baseDownURI = new Uri(@"https://github.com/PCSX2/pcsx2/releases/download/");
+            ConsoleKey response = ConsoleKey.N;
+
             string currentDir = string.Empty;
             string pcsx2FullDir = string.Empty;
+            string version = string.Empty;
+            string bit = string.Empty;
+            string zipFile = string.Empty;
+            string folderName = string.Empty;
             string zipFullDir = string.Empty;
+            string extractFullDir = string.Empty;
 
             // Begin
             Console.WriteLine("Simple PCSX2 Updater - By TBirdSoars");
@@ -32,12 +33,19 @@ namespace Simple_PCSX2_Updater
 
             // Identify where this app is and check for pcsx2.exe
             Console.WriteLine("Finding PCSX2... ");
-            ConsoleKey response = ConsoleKey.N;
             try
             {
+                bool pcsx2Found = false;
                 currentDir = Path.GetDirectoryName(AppContext.BaseDirectory);
-                pcsx2FullDir = Path.Combine(currentDir, "pcsx2.exe");
-                if (!File.Exists(pcsx2FullDir))
+                foreach (string dir in Directory.GetFiles(currentDir))
+                {
+                    string file = Path.GetFileName(dir);
+                    if (file.StartsWith("pcsx2") && file.EndsWith(".exe"))
+                    {
+                        pcsx2Found = true;
+                    }
+                }
+                if (!pcsx2Found)
                 {
                     // Wrong folder or first time downloading
                     do
@@ -59,47 +67,47 @@ namespace Simple_PCSX2_Updater
                 Console.WriteLine($"Exception Finding PCSX2: {ex.Message}");
             }
 
-            // Set full path of zip file
-            zipFullDir = Path.Combine(currentDir, zipFile);
-
             // Proceed?
             if (response == ConsoleKey.Y)
             {
-                // Get build list
-                Console.WriteLine("Getting build list... ");
-                DataTable buildTable = await GetBuildTable();
-                if (buildTable.Rows.Count == 0 || !buildTable.Columns.Contains("build"))
+                // Get build version
+                Console.WriteLine("Getting build version... ");
+                version = await GetNightlyVersion();
+                if (version == "")
                 {
-                    Console.WriteLine("Failed to get list of builds, exiting...");
+                    Console.WriteLine("Failed to get version, exiting...");
                     Console.WriteLine("Press any key to continue...");
                     Console.ReadKey();
                     return;
                 }
 
 
-                // Get download URL
+                // Set names of folders and archives
+                if (Environment.Is64BitOperatingSystem)
+                {
+                    bit = "64bit";
+                }
+                else
+                {
+                    bit = "32bit";
+                }
+                zipFile = $"pcsx2-{version}-windows-{bit}-AVX2.7z";
+                folderName = Path.GetFileNameWithoutExtension(zipFile);
+                zipFullDir = Path.Combine(currentDir, zipFile);
+                extractFullDir = Path.Combine(currentDir, folderName);
+
+
+                // Set download URI
                 Console.WriteLine("Building download url... ");
-                string build_Path_and_Query = buildTable.Rows[0]["build"].ToString().Replace("amp;", "");
-                Uri downloadURL = new Uri(baseURL, build_Path_and_Query);
-                if (HttpUtility.ParseQueryString(downloadURL.Query).Get("rev") == null ||
-                    HttpUtility.ParseQueryString(downloadURL.Query).Get("platform") == null)
-                {
-                    Console.WriteLine("Failed to get download URL, exiting...");
-                    Console.WriteLine("Press any key to continue...");
-                    Console.ReadKey();
-                    return;
-                }
-
-
-                // Get name of extract folder
-                string folderName = "pcsx2-" + HttpUtility.ParseQueryString(downloadURL.Query).Get("rev");
-                folderName += "-" + HttpUtility.ParseQueryString(downloadURL.Query).Get("platform");
-                string extractFolder = Path.Combine(currentDir, folderName);
+                UriBuilder builder = new UriBuilder(baseDownURI);
+                builder.Path += version;
+                builder.Path += "/";
+                builder.Path += zipFile;
 
 
                 // Get download from URL
                 Console.WriteLine($"Downloading version {folderName}... ");
-                await DownloadArchive(downloadURL, zipFullDir);
+                await DownloadFile(builder.Uri, currentDir);
                 if (!File.Exists(zipFullDir))
                 {
                     Console.WriteLine("Failed to download, exiting...");
@@ -111,19 +119,7 @@ namespace Simple_PCSX2_Updater
 
                 // Extract 7zip archive
                 Console.WriteLine("Extracting PCSX2... ");
-                ExtractArchive(zipFullDir, currentDir);
-                if (!Directory.Exists(extractFolder))
-                {
-                    Console.WriteLine("Failed to extract archive, exiting...");
-                    Console.WriteLine("Press any key to continue...");
-                    Console.ReadKey();
-                    return;
-                }
-
-
-                // Move files into pcsx2.exe directory
-                Console.WriteLine("Moving files...");
-                MoveAll(extractFolder, currentDir);
+                ExtractHere(zipFullDir);
 
 
                 // Done!
@@ -136,93 +132,81 @@ namespace Simple_PCSX2_Updater
             Console.ReadKey();
         }
 
-        private static async Task<DataTable> GetBuildTable()
+        // Gets the latest nightly build version
+        private static async Task<string> GetNightlyVersion()
         {
-            DataTable output = new DataTable();
+            string version = string.Empty;
+            Uri releasesJSON = new Uri(@"https://api.pcsx2.net/v1/latestReleasesAndPullRequests");
 
-            // Download webpage
-            HtmlDocument htmlDoc = new HtmlDocument();
-            HtmlWeb htmlWeb = new HtmlWeb();
             try
             {
-                htmlDoc = await htmlWeb.LoadFromWebAsync(baseURL + urlParam);
+                using (HttpResponseMessage response = await client.GetAsync(releasesJSON))
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Console.WriteLine("DownloadArchive Error: Did not receive 200 OK status code.");
+                        return version;
+                    }
+
+                    if (response.Content == null)
+                    {
+                        Console.WriteLine("DownloadArchive Error: Response message content was null.");
+                        return version;
+                    }
+
+                    // Parse the JSON object
+                    using (Stream stream = await response.Content.ReadAsStreamAsync())
+                    using (StreamReader sReader = new StreamReader(stream))
+                    using (JsonTextReader jReader = new JsonTextReader(sReader))
+                    {
+                        bool done = false;
+                        while (jReader.Read() && !done)
+                        {
+                            // Skip stable list
+                            if (Convert.ToString(jReader.Value).Equals("stableReleases"))
+                            {
+                                jReader.Skip();
+                            }
+
+                            if (Convert.ToString(jReader.Value).Equals("nightlyReleases"))
+                            {
+                                // Read until version is found
+                                while (jReader.Read() && !done)
+                                {
+                                    if (Convert.ToString(jReader.Value).Equals("version"))
+                                    {
+                                        version = jReader.ReadAsString();
+                                        done = true;
+                                    }
+                                }
+                            }
+
+                            // Skip stable list
+                            if (Convert.ToString(jReader.Value).Equals("pullRequestBuilds"))
+                            {
+                                jReader.Skip();
+                            }
+                        }
+                    }
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"GetBuildTable Exception: {ex.Message}");
+                Console.WriteLine($"GetLatestNightly Exception: {ex.Message}");
             }
 
-            // Get table with all recent releases
-            HtmlNode tableNode = htmlDoc.DocumentNode.SelectSingleNode("//table[@class='listing']");
-            // First make sure stuff exists
-            if (tableNode != null)
-            {
-                // OK - get items of table, skip first item of table, only get items that contain more than one element, get the table as a list of lists of htmlnodes?!
-                List<List<HtmlNode>> tableListList = tableNode.Descendants("tr").Skip(1).Where(tr => tr.Elements("td").Count() > 1).Select(tr => tr.Elements("td").ToList()).ToList();
-
-                // Convert list of lists to datatable
-                DataTable releaseTable = new DataTable();
-                releaseTable.Columns.Add("commit", typeof(string));
-                releaseTable.Columns.Add("username", typeof(string));
-                releaseTable.Columns.Add("date", typeof(string));
-                releaseTable.Columns.Add("build", typeof(string));
-                releaseTable.Columns.Add("change", typeof(string));
-                foreach (List<HtmlNode> nodeList in tableListList)
-                {
-                    DataRow row = releaseTable.NewRow();
-
-                    for (int i = 0; i < nodeList.Count; i++)
-                    {
-                        // The attributes are on the child nodes... I swear to fucking god I will never touch HTML again
-                        if (nodeList[i].HasChildNodes)
-                        {
-                            // Check if there is an href attribute, if not just grab innerText or nothing
-                            if (nodeList[i].FirstChild.Attributes["href"] != null)
-                            {
-                                row[i] = nodeList[i].FirstChild.Attributes["href"].Value;
-                            }
-                            else
-                            {
-                                row[i] = nodeList[i].FirstChild.InnerText;
-                            }
-                        }
-                        else
-                        {
-                            // No child nodes, just get outerHTML
-                            row[i] = nodeList[i].OuterHtml;
-                        }
-                    }
-
-                    releaseTable.Rows.Add(row);
-                }
-
-                // Remove "No build" entries -  we want only downloads
-                releaseTable = releaseTable.Select("build <> 'No build'").CopyToDataTable();
-
-                // Convert the date column to datetime, then sort to find newest
-                DataTable finalTable = releaseTable.Clone();
-                finalTable.Columns["date"].DataType = typeof(DateTime);
-                foreach (DataRow row in releaseTable.Rows)
-                {
-                    finalTable.ImportRow(row);
-                }
-                finalTable.DefaultView.Sort = "date DESC";
-                output = finalTable.DefaultView.ToTable();
-            }
-            else
-            {
-                Console.WriteLine($"GetBuildTable Error: '{baseURL}' returned null.");
-            }
-
-            return output;
+            return version;
         }
 
-        // Downloads file from Uri as file specified in destination path
-        private static async Task DownloadArchive(Uri uri, string dest)
+        // Downloads file from Uri into destination path
+        private static async Task DownloadFile(Uri fileURI, string destPath)
         {
+            // Set output file
+            string destFile = Path.Combine(destPath, Path.GetFileName(fileURI.LocalPath));
+
             try
             {
-                using (HttpResponseMessage message = await client.GetAsync(uri))
+                using (HttpResponseMessage message = await client.GetAsync(fileURI))
                 {
                     if (!message.IsSuccessStatusCode)
                     {
@@ -237,7 +221,7 @@ namespace Simple_PCSX2_Updater
                     }
 
                     using (Stream stream = await message.Content.ReadAsStreamAsync())
-                    using (FileStream fileStream = new FileInfo(dest).OpenWrite())
+                    using (FileStream fileStream = new FileInfo(destFile).OpenWrite())
                     {
                         stream.CopyTo(fileStream);
                     }
@@ -250,16 +234,18 @@ namespace Simple_PCSX2_Updater
         }
 
         // Extracts 7z archive, then deletes archive
-        private static void ExtractArchive(string src, string dest)
+        private static void ExtractHere(string src)
         {
+            string a = Path.GetDirectoryName(src);
+
             try
             {
-                if (File.Exists(src) && Directory.Exists(dest))
+                if (File.Exists(src))
                 {
                     using (SevenZipArchive sevenZipArchive = SevenZipArchive.Open(src))
                     using (IReader reader = sevenZipArchive.ExtractAllEntries())
                     {
-                        reader.WriteAllToDirectory(dest, new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
+                        reader.WriteAllToDirectory(Path.GetDirectoryName(src), new ExtractionOptions { ExtractFullPath = true, Overwrite = true });
                     }
 
                     // Cleanup
@@ -267,84 +253,12 @@ namespace Simple_PCSX2_Updater
                 }
                 else
                 {
-                    Console.WriteLine($"ExtractArchive Error: '{src}' or '{dest}' does not exist.");
+                    Console.WriteLine($"ExtractArchive Error: '{src}' does not exist.");
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"ExtractArchive Exception: {ex.Message}");
-            }
-        }
-
-        // Moves everything from within source folder to destination folder,
-        // then deletes source folder
-        // https://stackoverflow.com/questions/48248807/move-certain-files-to-a-folder-in-the-fastest-way-possible
-        private static void MoveAll(string src, string dest)
-        {
-            try
-            {
-                if (Directory.Exists(src) && Directory.Exists(dest))
-                {
-                    string[] files = Directory.GetFiles(src);
-                    string[] folders = Directory.GetDirectories(src);
-
-                    // Move the files
-                    foreach (string file in files)
-                    {
-                        string oldFile = Path.Combine(dest, Path.GetFileName(file));
-
-                        // Delete existing files with same name
-                        if (File.Exists(oldFile))
-                        {
-                            File.Delete(oldFile);
-                        }
-
-                        // Move new files to destination
-                        string fileName = Path.GetFileName(file);
-                        string destFile = Path.Combine(dest, fileName);
-                        File.Move(file, destFile, true);
-                    }
-
-                    // Move the folders
-                    foreach (string folder in folders)
-                    {
-                        string oldFolder = Path.Combine(dest, Path.GetFileName(folder));
-
-                        // Delete existing folders with same name
-                        if (Directory.Exists(oldFolder))
-                        {
-                            // Must delete folder contents first
-                            DirectoryInfo di = new DirectoryInfo(oldFolder);
-                            foreach (FileInfo file in di.GetFiles())
-                            {
-                                file.Delete();
-                            }
-                            foreach (DirectoryInfo dir in di.GetDirectories())
-                            {
-                                dir.Delete(true);
-                            }
-
-                            // Delete old folder
-                            Directory.Delete(oldFolder);
-                        }
-
-                        // Move new folders to destination
-                        string folderName = Path.GetFileName(folder);
-                        string destFolder = Path.Combine(dest, folderName);
-                        Directory.Move(folder, destFolder);
-                    }
-
-                    // Delete src folder
-                    Directory.Delete(src);
-                }
-                else
-                {
-                    Console.WriteLine($"MoveAll Error: '{src}' or '{dest}' does not exist.");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"MoveAll Exception: {ex.Message}");
             }
         }
     }
