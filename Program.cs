@@ -1,10 +1,10 @@
-﻿using Newtonsoft.Json;
-using SharpCompress.Archives.SevenZip;
+﻿using SharpCompress.Archives.SevenZip;
 using SharpCompress.Common;
 using SharpCompress.Readers;
 using System;
 using System.IO;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Simple_PCSX2_Updater
@@ -154,38 +154,47 @@ namespace Simple_PCSX2_Updater
                         return version;
                     }
 
-                    // Parse the JSON object
+                    // Parse the JSON document
                     using (Stream stream = response.Content.ReadAsStream())
-                    using (StreamReader sReader = new StreamReader(stream))
-                    using (JsonTextReader jReader = new JsonTextReader(sReader))
+                    using (JsonDocument jDoc = JsonDocument.Parse(stream))
+                    using (JsonElement.ObjectEnumerator jOEnum = jDoc.RootElement.EnumerateObject())
                     {
-                        bool done = false;
-                        while (jReader.Read() && !done)
+                        // nightlyReleases object
+                        if (jDoc.RootElement.TryGetProperty("nightlyReleases", out JsonElement nightlyReleases))
                         {
-                            // Skip stable list
-                            if (Convert.ToString(jReader.Value).Equals("stableReleases"))
+                            // data array
+                            if (nightlyReleases.TryGetProperty("data", out JsonElement data))
                             {
-                                jReader.Skip();
-                            }
-
-                            if (Convert.ToString(jReader.Value).Equals("nightlyReleases"))
-                            {
-                                // Read until version is found
-                                while (jReader.Read() && !done)
+                                // First item in array is recent version
+                                using (JsonElement.ArrayEnumerator dataEnum = data.EnumerateArray())
                                 {
-                                    if (Convert.ToString(jReader.Value).Equals("version"))
+                                    // Enter array
+                                    if (dataEnum.MoveNext())
                                     {
-                                        version = jReader.ReadAsString();
-                                        done = true;
+                                        // version element string
+                                        if (dataEnum.Current.TryGetProperty("version", out JsonElement versionElement))
+                                        {
+                                            version = versionElement.GetString();
+                                        }
+                                        else
+                                        {
+                                            Console.WriteLine($"GetLatestNightly Error: version not found.");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine($"GetLatestNightly Error: no entries in data array.");
                                     }
                                 }
                             }
-
-                            // Skip stable list
-                            if (Convert.ToString(jReader.Value).Equals("pullRequestBuilds"))
+                            else
                             {
-                                jReader.Skip();
+                                Console.WriteLine($"GetLatestNightly Error: data not found.");
                             }
+                        }
+                        else
+                        {
+                            Console.WriteLine($"GetLatestNightly Error: nightlyReleases not found.");
                         }
                     }
                 }
