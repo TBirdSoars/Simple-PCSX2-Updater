@@ -160,41 +160,37 @@ namespace Simple_PCSX2_Updater
                     using (JsonElement.ObjectEnumerator jOEnum = jDoc.RootElement.EnumerateObject())
                     {
                         // nightlyReleases object
-                        if (jDoc.RootElement.TryGetProperty("nightlyReleases", out JsonElement nightlyReleases))
-                        {
-                            // data array
-                            if (nightlyReleases.TryGetProperty("data", out JsonElement data))
-                            {
-                                // First item in array is recent version
-                                using (JsonElement.ArrayEnumerator dataEnum = data.EnumerateArray())
-                                {
-                                    // Enter array
-                                    if (dataEnum.MoveNext())
-                                    {
-                                        // version element string
-                                        if (dataEnum.Current.TryGetProperty("version", out JsonElement versionElement))
-                                        {
-                                            version = versionElement.GetString();
-                                        }
-                                        else
-                                        {
-                                            Console.WriteLine($"GetLatestNightly Error: version not found.");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        Console.WriteLine($"GetLatestNightly Error: no entries in data array.");
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                Console.WriteLine($"GetLatestNightly Error: data not found.");
-                            }
-                        }
-                        else
+                        if (!jDoc.RootElement.TryGetProperty("nightlyReleases", out JsonElement nightlyReleases))
                         {
                             Console.WriteLine($"GetLatestNightly Error: nightlyReleases not found.");
+                            return version;
+                        }
+
+                        // data array
+                        if (!nightlyReleases.TryGetProperty("data", out JsonElement data))
+                        {
+                            Console.WriteLine($"GetLatestNightly Error: data not found.");
+                            return version;
+                        }
+
+                        // First item in array is recent version
+                        using (JsonElement.ArrayEnumerator dataEnum = data.EnumerateArray())
+                        {
+                            // Enter array
+                            if (!dataEnum.MoveNext())
+                            {
+                                Console.WriteLine($"GetLatestNightly Error: no entries in data array.");
+                                return version;
+                            }
+
+                            // version element string
+                            if (!dataEnum.Current.TryGetProperty("version", out JsonElement versionElement))
+                            {
+                                Console.WriteLine($"GetLatestNightly Error: version not found.");
+                                return version;
+                            }
+
+                            version = versionElement.GetString();
                         }
                     }
                 }
