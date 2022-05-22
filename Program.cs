@@ -91,7 +91,7 @@ namespace Simple_PCSX2_Updater
                 {
                     bit = "32bit";
                 }
-                zipFile = $"pcsx2-{version}-windows-{bit}-AVX2.7z";
+                zipFile = $"pcsx2-{version}-windows-{bit}-AVX2-wxWidgets.7z";
                 folderName = Path.GetFileNameWithoutExtension(zipFile);
                 zipFullDir = Path.Combine(currentDir, zipFile);
                 extractFullDir = Path.Combine(currentDir, folderName);
