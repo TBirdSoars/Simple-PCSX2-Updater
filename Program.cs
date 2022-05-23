@@ -91,7 +91,16 @@ namespace Simple_PCSX2_Updater
                 {
                     bit = "32bit";
                 }
-                zipFile = $"pcsx2-{version}-windows-{bit}-AVX2-wxWidgets.7z";
+
+                // Wrong folder or first time downloading
+                string UIresponse = string.Empty;
+                do
+                {
+                    Console.Write("Which UI - QT or wxWidgets? (QT/wxWidgets) ");
+                    UIresponse = Console.ReadLine();
+                }
+                while (UIresponse != "QT" && UIresponse != "wxWidgets");
+                zipFile = $"pcsx2-{version}-windows-{bit}-AVX2-{UIresponse}.7z";
                 folderName = Path.GetFileNameWithoutExtension(zipFile);
                 zipFullDir = Path.Combine(currentDir, zipFile);
                 extractFullDir = Path.Combine(currentDir, folderName);
